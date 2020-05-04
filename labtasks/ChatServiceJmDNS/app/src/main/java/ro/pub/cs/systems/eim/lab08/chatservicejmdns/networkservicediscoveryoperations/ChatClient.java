@@ -1,11 +1,14 @@
 package ro.pub.cs.systems.eim.lab08.chatservicejmdns.networkservicediscoveryoperations;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.content.Context;
 import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.NoRouteToHostException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +18,8 @@ import java.util.concurrent.BlockingQueue;
 import ro.pub.cs.systems.eim.lab08.chatservicejmdns.general.Constants;
 import ro.pub.cs.systems.eim.lab08.chatservicejmdns.general.Utilities;
 import ro.pub.cs.systems.eim.lab08.chatservicejmdns.model.Message;
+import ro.pub.cs.systems.eim.lab08.chatservicejmdns.view.ChatActivity;
+import ro.pub.cs.systems.eim.lab08.chatservicejmdns.view.ChatConversationFragment;
 
 public class ChatClient {
 
@@ -82,6 +87,25 @@ public class ChatClient {
             if (printWriter != null) {
                 Log.d(Constants.TAG, "Sending messages to " + socket.getInetAddress() + ":" + socket.getLocalPort());
                 try {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String preluat = messageQueue.take();
+                        if(preluat != null) {
+                            printWriter.println(preluat);
+                            Message message = new Message(preluat, Constants.MESSAGE_TYPE_SENT);
+                            conversationHistory.add(message);
+                            if (context != null) {
+                                ChatActivity chatActivity = (ChatActivity)context;
+                                FragmentManager fragmentManager = chatActivity.getFragmentManager();
+                                Fragment fragment = fragmentManager.findFragmentByTag(Constants.FRAGMENT_TAG);
+                                if (fragment instanceof ChatConversationFragment && fragment.isVisible()) {
+                                    ChatConversationFragment chatConversationFragment = (ChatConversationFragment)fragment;
+                                    chatConversationFragment.appendMessage(message);
+                                }
+                            }
+                        }
+
+                    }
+
 
                     // TODO exercise 6
                     // iterate while the thread is not yet interrupted
@@ -118,6 +142,22 @@ public class ChatClient {
                 Log.d(Constants.TAG, "Receiving messages from " + socket.getInetAddress() + ":" + socket.getLocalPort());
                 try {
 
+                    while (!Thread.currentThread().isInterrupted()) {
+                        String preluat = bufferedReader.readLine();
+                        if (preluat != null) {
+                            Message message = new Message(preluat, Constants.MESSAGE_TYPE_RECEIVED);
+                            conversationHistory.add(message);
+                            if (context != null) {
+                                ChatActivity chatActivity = (ChatActivity)context;
+                                FragmentManager fragmentManager = chatActivity.getFragmentManager();
+                                Fragment fragment = fragmentManager.findFragmentByTag(Constants.FRAGMENT_TAG);
+                                if (fragment instanceof ChatConversationFragment && fragment.isVisible()) {
+                                    ChatConversationFragment chatConversationFragment = (ChatConversationFragment)fragment;
+                                    chatConversationFragment.appendMessage(message);
+                                }
+                            }
+                        }
+                    }
                     // TODO: exercise 7
                     // iterate while the thread is not yet interrupted
                     // - receive the content (a line) from the bufferedReader, if available
